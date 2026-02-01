@@ -5,8 +5,10 @@ import os
 SPACE_NAME = "AnjaneyaluAJ/wellness-tourism-predictor"
 MODEL_REPO = "AnjaneyaluAJ/wellness-tourism-model"
 
-# HF Token (set as env var or manual)
-HF_TOKEN = "hf_your_write_token"  # Replace or use os.getenv('HF_TOKEN')
+# HF Token from environment variable (secure)
+HF_TOKEN = os.getenv('HF_TOKEN')
+if not HF_TOKEN:
+    raise ValueError("Set HF_TOKEN environment variable: export HF_TOKEN=hf_xxxxxx")
 
 def deploy():
     login(HF_TOKEN)
@@ -37,10 +39,11 @@ def deploy():
                 repo_type="space"
             )
             print(f"Uploaded: {file_path}")
+        else:
+            print(f"Missing: {file_path}")
     
     print("Deployment complete!")
-    print(f"Space URL: https://huggingface.co/spaces/{SPACE_NAME}")
+    print(f"Live Space: https://huggingface.co/spaces/{SPACE_NAME}")
 
 if __name__ == "__main__":
     deploy()
-
