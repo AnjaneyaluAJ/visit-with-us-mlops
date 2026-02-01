@@ -1,0 +1,93 @@
+name: MLOps Pipeline - Data → Train → Evaluate → HF Deploy
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:  # Manual trigger
+
+jobs:
+  data-prep:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python 3.9
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.9'
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        
+    - name: Data Prep & Validation
+      run: |
+        python src/data_prep.py  # EDA, split train/test
+        python tests/test_data.py  # Validate CSVs
+        
+  train-evaluate:
+    needs: data-prep
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.9'
+        
+    - name: Install ML deps
+      run: |
+        pip install -r requirements.txt
+        pip install mlflow  # Optional tracking
+        
+    - name: Train XGBoost
+      run: python notebooks/train_model.py  # Tune → best_wellness_xgb.pkl (AUC 0.9712)
+      
+    - name: Evaluate & Save
+      run: |
+        python notebooks/evaluate.py  # Metrics → experiment_log.json
+        joblib.dump(model, 'models/best_wellness_xgb.pkl')
+        joblib.dump(encoders, 'models/label_encoders.pkl')
+        
+    - name: Upload Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: ml-artifacts
+        path: |
+          models/*.pkl
+          notebooks/*.ipynb
+          
+  deploy-hf:
+    needs: train-evaluate
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'  # Only main branch
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Download Artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: ml-artifacts
+        
+    - name: Deploy to HF Spaces
+      env:
+        HF_TOKEN: ${{ secrets.HF_TOKEN }}  # Add in GitHub Settings > Secrets
+      run: |
+        pip install huggingface_hub
+        huggingface-cli login --token $HF_TOKEN
+        
+        # Push Space files
+        huggingface-cli upload AnjaneyaluAJ/wellness-tourism-predictor \
+          app.py Dockerfile requirements.txt models/ models/
+          
+        # Push Model Hub
+        huggingface-cli upload AnjaneyaluAJ/wellness-tourism-model \
+          models/best_wellness_xgb.pkl models/label_encoders.pkl \
+          --repo-type model
+        
+    - name: Notify Success
+      run: echo "✅ Full MLOps Pipeline Complete! Live: https://huggingface.co/spaces/AnjaneyaluAJ/wellness-tourism-predictor"
