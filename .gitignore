@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+data/raw_wellness_package.csv
+models/
+.DS_Store
+.ipynb_checkpoints/
