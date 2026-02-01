@@ -6,7 +6,7 @@ SPACE_NAME = "AnjaneyaluAJ/wellness-tourism-predictor"
 MODEL_REPO = "AnjaneyaluAJ/wellness-tourism-model"
 
 # HF Token (set as env var or manual)
-HF_TOKEN = os.getenv('HF_TOKEN')  # Replace or use os.getenv('HF_TOKEN')
+HF_TOKEN = "hf_your_write_token"  # Replace or use os.getenv('HF_TOKEN')
 
 def deploy():
     login(HF_TOKEN)
